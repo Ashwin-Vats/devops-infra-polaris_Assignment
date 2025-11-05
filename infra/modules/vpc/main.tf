@@ -1,18 +1,33 @@
+##############################################
+# VPC CREATION
+##############################################
+
 resource "aws_vpc" "this" {
   cidr_block           = var.vpc_cidr
   enable_dns_support   = true
   enable_dns_hostnames = true
+
   tags = {
-    Name = "eks-vpc"
+    Name = "${var.cluster_name}-vpc"
   }
 }
 
+##############################################
+# INTERNET GATEWAY
+##############################################
+
 resource "aws_internet_gateway" "igw" {
   vpc_id = aws_vpc.this.id
-  tags = { Name = "eks-igw" }
+
+  tags = {
+    Name = "${var.cluster_name}-igw"
+  }
 }
 
-# Public subnets
+##############################################
+# PUBLIC SUBNETS
+##############################################
+
 resource "aws_subnet" "public" {
   count                   = 3
   vpc_id                  = aws_vpc.this.id
@@ -21,12 +36,15 @@ resource "aws_subnet" "public" {
   map_public_ip_on_launch = true
 
   tags = {
-    Name = "public-${count.index + 1}"
+    Name                     = "${var.cluster_name}-public-${count.index + 1}"
     "kubernetes.io/role/elb" = "1"
   }
 }
 
-# Private subnets
+##############################################
+# PRIVATE SUBNETS
+##############################################
+
 resource "aws_subnet" "private" {
   count             = 3
   vpc_id            = aws_vpc.this.id
@@ -34,29 +52,49 @@ resource "aws_subnet" "private" {
   availability_zone = var.azs[count.index]
 
   tags = {
-    Name = "private-${count.index + 1}"
-    "kubernetes.io/role/internal-elb" = "1"
+    Name                                = "${var.cluster_name}-private-${count.index + 1}"
+    "kubernetes.io/role/internal-elb"   = "1"
   }
 }
 
-# NAT Gateway setup
+##############################################
+# NAT GATEWAY
+##############################################
+
 resource "aws_eip" "nat" {
-  count = 1
+  count  = 1
   domain = "vpc"
+
+  tags = {
+    Name = "${var.cluster_name}-nat-eip"
+  }
 }
 
 resource "aws_nat_gateway" "nat" {
   allocation_id = aws_eip.nat[0].id
   subnet_id     = aws_subnet.public[0].id
-  tags = { Name = "eks-nat" }
+
+  tags = {
+    Name = "${var.cluster_name}-nat"
+  }
+
+  depends_on = [aws_internet_gateway.igw]
 }
 
-# Route Tables
+##############################################
+# PUBLIC ROUTE TABLE
+##############################################
+
 resource "aws_route_table" "public" {
   vpc_id = aws_vpc.this.id
+
   route {
     cidr_block = "0.0.0.0/0"
     gateway_id = aws_internet_gateway.igw.id
+  }
+
+  tags = {
+    Name = "${var.cluster_name}-public-rt"
   }
 }
 
@@ -66,11 +104,20 @@ resource "aws_route_table_association" "public" {
   route_table_id = aws_route_table.public.id
 }
 
+##############################################
+# PRIVATE ROUTE TABLE
+##############################################
+
 resource "aws_route_table" "private" {
   vpc_id = aws_vpc.this.id
+
   route {
     cidr_block     = "0.0.0.0/0"
     nat_gateway_id = aws_nat_gateway.nat.id
+  }
+
+  tags = {
+    Name = "${var.cluster_name}-private-rt"
   }
 }
 
