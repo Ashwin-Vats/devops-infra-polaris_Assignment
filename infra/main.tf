@@ -1,5 +1,6 @@
 module "vpc" {
   source = "./modules/vpc"
+  cluster_name     = var.cluster_name
 
   vpc_cidr = "10.0.0.0/16"
   azs      = ["us-east-1a", "us-east-1b", "us-east-1c"]
