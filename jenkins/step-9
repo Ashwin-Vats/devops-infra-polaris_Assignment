@@ -1,0 +1,13 @@
+Install the GitHub plugin in Jenkins.
+
+Create a webhook in your GitHub repo:
+
+Go to Repo → Settings → Webhooks → Add webhook
+
+URL: http://<jenkins-url>/github-webhook/
+
+Content type: application/json
+
+Jenkins listens for GitHub events (like push).
+
+On every push, Jenkins runs the pipeline defined in your Jenkinsfile.

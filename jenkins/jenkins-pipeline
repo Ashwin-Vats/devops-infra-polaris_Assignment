@@ -1,0 +1,4 @@
+helm upgrade --install sample-api ./chart \
+  --namespace sample-api \
+  --set image.repository=123456789012.dkr.ecr.us-east-1.amazonaws.com/sample-api \
+  --set image.tag=${GIT_COMMIT}
